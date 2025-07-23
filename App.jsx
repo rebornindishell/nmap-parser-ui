@@ -1,10 +1,6 @@
 import React, { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-export default function NmapScanViewer() {
+export default function App() {
   const [xmlContent, setXmlContent] = useState("");
   const [nmapContent, setNmapContent] = useState("");
   const [liveInput, setLiveInput] = useState("");
@@ -56,14 +52,6 @@ export default function NmapScanViewer() {
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target.result;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const fileName = `${type === "xml" ? "xml" : "nmap"}_upload_${timestamp}.txt`;
-      const blob = new Blob([text], { type: "text/plain" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = fileName;
-      link.click();
-
       if (type === "xml") {
         setXmlContent(text);
         parseXml(text);
@@ -131,15 +119,17 @@ export default function NmapScanViewer() {
 
   const filterPortData = (results) => {
     if (!filter) return results;
-    return results.map((host) => ({
-      ...host,
-      ports: host.ports.filter(
-        (port) =>
-          port.state === "open" &&
-          (port.service?.toLowerCase().includes(filter.toLowerCase()) ||
-            port.portId?.includes(filter))
-      )
-    })).filter((host) => host.ports.length > 0);
+    return results
+      .map((host) => ({
+        ...host,
+        ports: host.ports.filter(
+          (port) =>
+            port.state === "open" &&
+            (port.service?.toLowerCase().includes(filter.toLowerCase()) ||
+              port.portId?.includes(filter))
+        )
+      }))
+      .filter((host) => host.ports.length > 0);
   };
 
   return (
@@ -148,11 +138,11 @@ export default function NmapScanViewer() {
       <div className="flex gap-4 mb-4 flex-wrap">
         <div>
           <label className="block mb-2">Upload Nmap XML:</label>
-          <Input type="file" accept=".xml" onChange={(e) => handleFileUpload(e, "xml")} />
+          <input type="file" accept=".xml" onChange={(e) => handleFileUpload(e, "xml")} />
         </div>
         <div>
           <label className="block mb-2">Upload Grepable/.nmap File:</label>
-          <Input type="file" accept=".nmap,.gnmap,.txt" onChange={(e) => handleFileUpload(e, "nmap")} />
+          <input type="file" accept=".nmap,.gnmap,.txt" onChange={(e) => handleFileUpload(e, "nmap")} />
         </div>
         <div className="flex flex-col">
           <label className="block mb-2">Paste Nmap Output:</label>
@@ -161,59 +151,54 @@ export default function NmapScanViewer() {
             value={liveInput}
             onChange={(e) => setLiveInput(e.target.value)}
           />
-          <Button onClick={handleLivePaste} className="mt-2">Parse</Button>
+          <button onClick={handleLivePaste} className="mt-2 px-4 py-2 bg-blue-500 text-white rounded">Parse</button>
         </div>
         <div className="flex items-end gap-2">
-          <Button onClick={exportToJson}>Export to JSON</Button>
-          <Button onClick={exportToCSV}>Export to CSV</Button>
+          <button onClick={exportToJson} className="px-4 py-2 bg-green-500 text-white rounded">Export to JSON</button>
+          <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 text-white rounded">Export to CSV</button>
         </div>
         <div className="flex flex-col">
           <label className="block mb-2">Filter by Port/Service (e.g., http, 443):</label>
-          <Input type="text" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Enter service name or port" />
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Enter service name or port"
+            className="border p-2 rounded"
+          />
         </div>
       </div>
 
-      <Tabs defaultValue="xml" className="w-full">
-        <TabsList>
-          <TabsTrigger value="xml">XML Output</TabsTrigger>
-          <TabsTrigger value="nmap">.nmap Output</TabsTrigger>
-        </TabsList>
+      <div>
+        <h2 className="text-lg font-semibold mb-2">XML Results</h2>
+        {(filterPortData(scanResults.xmlResults || [])).map((host, i) => (
+          <div key={i} className="mb-4 border p-3 rounded shadow">
+            <h3>Host: {host.address}</h3>
+            <ul className="ml-4 list-disc">
+              {host.ports.map((port, j) => (
+                <li key={j}>
+                  Port {port.portId}/{port.protocol} - {port.state} - {port.service}
+                  {port.script && <div className="ml-4 text-sm text-gray-600">Vuln: {port.script}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
 
-        <TabsContent value="xml">
-          {filterPortData(scanResults.xmlResults || []).map((host, i) => (
-            <Card key={i} className="mb-4">
-              <CardContent>
-                <h2 className="text-lg font-semibold">Host: {host.address}</h2>
-                <ul className="ml-4 mt-2 list-disc">
-                  {host.ports.map((port, j) => (
-                    <li key={j}>
-                      Port {port.portId}/{port.protocol} - {port.state} - {port.service}
-                      {port.script && <div className="ml-4 text-sm text-gray-600">Vuln: {port.script}</div>}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="nmap">
-          {filterPortData(scanResults.grepResults || []).map((host, i) => (
-            <Card key={i} className="mb-4">
-              <CardContent>
-                <h2 className="text-lg font-semibold">Host: {host.address}</h2>
-                <ul className="ml-4 mt-2 list-disc">
-                  {host.ports.map((port, j) => (
-                    <li key={j}>
-                      Port {port.portId} - {port.state} - {port.service}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-      </Tabs>
+        <h2 className="text-lg font-semibold mb-2 mt-6">Grepable Results</h2>
+        {(filterPortData(scanResults.grepResults || [])).map((host, i) => (
+          <div key={i} className="mb-4 border p-3 rounded shadow">
+            <h3>Host: {host.address}</h3>
+            <ul className="ml-4 list-disc">
+              {host.ports.map((port, j) => (
+                <li key={j}>
+                  Port {port.portId} - {port.state} - {port.service}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
