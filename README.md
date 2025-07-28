@@ -23,3 +23,6 @@ Visit:
 http://localhost:5173
 You should see your fresh Nmap UI ready to upload, filter, and export scan results.
 
+-------------------------------------------------------------------------------------
+
+7z file contains updated complete code, with multiple functionalities like search, toggle themes and copy filtered search, export etc.
